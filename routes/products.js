@@ -16,4 +16,16 @@ router.post("/", async (req, res) => {
   res.json({ message: "✅ Product Added!" });
 });
 
+// Update a product
+router.put("/:id", async (req, res) => {
+  await Product.findByIdAndUpdate(req.params.id, req.body);
+  res.json({ message: "✅ Product Updated!" });
+});
+
+// Delete a product
+router.delete("/:id", async (req, res) => {
+  await Product.findByIdAndDelete(req.params.id);
+  res.json({ message: "🗑 Product Deleted!" });
+});
+
 module.exports = router;
