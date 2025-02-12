@@ -12,7 +12,7 @@ const productSchema = new mongoose.Schema({
   image: String,
   category: {
     type: String,
-    enum: ["smartphone", "electronics", "home-appliance"], // ✅ Fixed category names
+    enum: ["smartphone", "electronics", "home-appliance"],
     required: true,
   },
   textColor: { type: String, default: "#000000" },
