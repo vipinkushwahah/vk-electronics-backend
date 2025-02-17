@@ -9,7 +9,10 @@ const productSchema = new mongoose.Schema({
   title: String,
   bankname: String,
   bankOffer: { type: Number, default: 0 },
-  image: String,
+  image: {
+    data: Buffer, // 🔥 Store image in binary format
+    contentType: String, // 🔥 Store image type (jpeg, png, svg)
+  },
   category: {
     type: String,
     enum: ["smartphone", "electronics", "home-appliance"],
