@@ -10,28 +10,35 @@ const router = express.Router();
 const storage = multer.memoryStorage();
 const upload = multer({ storage });
 
-// ✅ Add a new product with an image
-router.post("/", upload.single("image"), asyncHandler(async (req, res) => {
+// ✅ Add a new product with multiple images
+router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => { // Max 5 images allowed
   try {
-    let compressedImage = null;
+    let compressedImages = [];
 
-    if (req.file) {
+    if (req.files) {
       // 🔥 Optimize & compress images (except SVG, which doesn't need compression)
-      if (req.file.mimetype !== "image/svg+xml") {
-        compressedImage = await sharp(req.file.buffer)
-          .resize({ width: 500 }) // Resize width to 500px (maintains aspect ratio)
-          .jpeg({ quality: 70 }) // Convert to JPEG (reduce size while keeping quality)
-          .toBuffer();
-      } else {
-        compressedImage = req.file.buffer; // SVG doesn't need compression
+      for (let file of req.files) {
+        let compressedImage = file.buffer;
+
+        if (file.mimetype !== "image/svg+xml") {
+          compressedImage = await sharp(file.buffer)
+            .resize({ width: 500 }) // Resize width to 500px (maintains aspect ratio)
+            .jpeg({ quality: 70 }) // Convert to JPEG (reduce size while keeping quality)
+            .toBuffer();
+        }
+
+        // Push compressed image to array
+        compressedImages.push({
+          data: compressedImage,
+          contentType: file.mimetype,
+        });
       }
     }
 
+    // Create a new product with the compressed images and other details
     const newProduct = new Product({
       ...req.body,
-      image: req.file
-        ? { data: compressedImage, contentType: req.file.mimetype }
-        : null,
+      images: compressedImages, // Store multiple images
     });
 
     await newProduct.save();
@@ -42,18 +49,19 @@ router.post("/", upload.single("image"), asyncHandler(async (req, res) => {
   }
 }));
 
-// ✅ Get a single product by ID (Return Image as Base64)
+// ✅ Get a single product by ID (Return images as Base64)
 router.get("/product/:id", asyncHandler(async (req, res) => {
   const product = await Product.findById(req.params.id);
   if (!product) {
     return res.status(404).json({ message: "❌ Product not found!" });
   }
 
-  if (product.image && product.image.data) {
-    product.image = {
-      data: product.image.data.toString("base64"), // Convert Buffer to Base64
-      contentType: product.image.contentType,
-    };
+  // Convert images from binary (Buffer) to Base64 for the frontend
+  if (product.images && product.images.length > 0) {
+    product.images = product.images.map((image) => ({
+      data: image.data.toString("base64"), // Convert Buffer to Base64
+      contentType: image.contentType,
+    }));
   }
 
   res.json(product);
@@ -71,24 +79,30 @@ router.get("/:category", asyncHandler(async (req, res) => {
   res.json(products);
 }));
 
-// ✅ Update a product
-router.put("/:id", upload.single("image"), asyncHandler(async (req, res) => {
+// ✅ Update a product (supporting multiple image updates)
+router.put("/:id", upload.array("images", 5), asyncHandler(async (req, res) => {
   try {
     let updatedFields = { ...req.body };
 
-    if (req.file) {
-      let compressedImage = req.file.buffer;
-      if (req.file.mimetype !== "image/svg+xml") {
-        compressedImage = await sharp(req.file.buffer)
-          .resize({ width: 500 })
-          .jpeg({ quality: 70 })
-          .toBuffer();
+    if (req.files && req.files.length > 0) {
+      let compressedImages = [];
+      for (let file of req.files) {
+        let compressedImage = file.buffer;
+
+        if (file.mimetype !== "image/svg+xml") {
+          compressedImage = await sharp(file.buffer)
+            .resize({ width: 500 })
+            .jpeg({ quality: 70 })
+            .toBuffer();
+        }
+
+        compressedImages.push({
+          data: compressedImage,
+          contentType: file.mimetype,
+        });
       }
 
-      updatedFields.image = {
-        data: compressedImage,
-        contentType: req.file.mimetype,
-      };
+      updatedFields.images = compressedImages; // Update images field
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updatedFields, { new: true });
