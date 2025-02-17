@@ -16,7 +16,6 @@ router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => { /
     let compressedImages = [];
 
     if (req.files) {
-      // 🔥 Optimize & compress images (except SVG, which doesn't need compression)
       for (let file of req.files) {
         let compressedImage = file.buffer;
 
@@ -27,7 +26,6 @@ router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => { /
             .toBuffer();
         }
 
-        // Push compressed image to array
         compressedImages.push({
           data: compressedImage,
           contentType: file.mimetype,
@@ -35,10 +33,10 @@ router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => { /
       }
     }
 
-    // Create a new product with the compressed images and other details
+    // Create a new product with the compressed images
     const newProduct = new Product({
       ...req.body,
-      images: compressedImages, // Store multiple images
+      images: compressedImages, 
     });
 
     await newProduct.save();
@@ -56,10 +54,10 @@ router.get("/product/:id", asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "❌ Product not found!" });
   }
 
-  // Convert images from binary (Buffer) to Base64 for the frontend
+  // Convert images from binary (Buffer) to Base64
   if (product.images && product.images.length > 0) {
     product.images = product.images.map((image) => ({
-      data: image.data.toString("base64"), // Convert Buffer to Base64
+      data: `data:${image.contentType};base64,${image.data.toString("base64")}`, // ✅ Proper Base64 conversion
       contentType: image.contentType,
     }));
   }
@@ -67,16 +65,40 @@ router.get("/product/:id", asyncHandler(async (req, res) => {
   res.json(product);
 }));
 
-// ✅ Get all products
+// ✅ Get all products (Ensure images are Base64)
 router.get("/", asyncHandler(async (req, res) => {
   const products = await Product.find();
-  res.json(products);
+
+  // Convert images from binary (Buffer) to Base64
+  const formattedProducts = products.map(product => {
+    if (product.images && product.images.length > 0) {
+      product.images = product.images.map(image => ({
+        data: `data:${image.contentType};base64,${image.data.toString("base64")}`, // ✅ Proper Base64 conversion
+        contentType: image.contentType
+      }));
+    }
+    return product;
+  });
+
+  res.json(formattedProducts);
 }));
 
-// ✅ Get products by category
+// ✅ Get products by category (Ensure images are Base64)
 router.get("/:category", asyncHandler(async (req, res) => {
   const products = await Product.find({ category: req.params.category });
-  res.json(products);
+
+  // Convert images from binary (Buffer) to Base64
+  const formattedProducts = products.map(product => {
+    if (product.images && product.images.length > 0) {
+      product.images = product.images.map(image => ({
+        data: `data:${image.contentType};base64,${image.data.toString("base64")}`, // ✅ Proper Base64 conversion
+        contentType: image.contentType
+      }));
+    }
+    return product;
+  });
+
+  res.json(formattedProducts);
 }));
 
 // ✅ Update a product (supporting multiple image updates)
@@ -102,7 +124,7 @@ router.put("/:id", upload.array("images", 5), asyncHandler(async (req, res) => {
         });
       }
 
-      updatedFields.images = compressedImages; // Update images field
+      updatedFields.images = compressedImages;
     }
 
     const updatedProduct = await Product.findByIdAndUpdate(req.params.id, updatedFields, { new: true });
