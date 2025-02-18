@@ -54,15 +54,16 @@ router.get("/product/:id", asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "❌ Product not found!" });
   }
 
-  // // Convert images from binary (Buffer) to Base64
-  // if (product.images && product.images.length > 0) {
-  //   product.images = product.images.map((image) => ({
-  //     data: `data:${image.contentType};base64,${image.data.toString("base64")}`, // ✅ Proper Base64 conversion
-  //     contentType: image.contentType,
-  //   }));
-  // }
+  // Convert images from binary (Buffer) to Base64
+  const formattedProduct = {
+    ...product._doc, // Ensure all product fields are included
+    images: product.images.map((image) => ({
+      data: `data:${image.contentType};base64,${image.data.toString("base64")}`, // ✅ Proper Base64 conversion
+      contentType: image.contentType,
+    })),
+  };
 
-  // res.json(product);
+  res.json(formattedProduct);
 }));
 
 // ✅ Get all products (Ensure images are Base64)
