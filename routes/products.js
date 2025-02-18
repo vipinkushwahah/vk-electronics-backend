@@ -67,39 +67,46 @@ router.get("/product/:id", asyncHandler(async (req, res) => {
 
 // ✅ Get all products (Ensure images are Base64)
 router.get("/", asyncHandler(async (req, res) => {
-  const products = await Product.find();
+  try {
+    const products = await Product.find();
 
-  // Convert images from binary (Buffer) to Base64
-  const formattedProducts = products.map(product => {
-    if (product.images && product.images.length > 0) {
-      product.images = product.images.map(image => ({
-        data: `data:${image.contentType};base64,${image.data.toString("base64")}`, // ✅ Proper Base64 conversion
+    // Convert images from binary (Buffer) to Base64
+    const formattedProducts = products.map(product => ({
+      ...product._doc, // Ensure all product fields are included
+      images: product.images.map(image => ({
+        data: `data:${image.contentType};base64,${image.data.toString("base64")}`,
         contentType: image.contentType
-      }));
-    }
-    return product;
-  });
+      }))
+    }));
 
-  res.json(formattedProducts);
+    res.json(formattedProducts);
+  } catch (error) {
+    console.error("❌ Error fetching products:", error);
+    res.status(500).json({ message: "Failed to fetch products" });
+  }
 }));
 
 // ✅ Get products by category (Ensure images are Base64)
 router.get("/:category", asyncHandler(async (req, res) => {
-  const products = await Product.find({ category: req.params.category });
+  try {
+    const products = await Product.find({ category: req.params.category });
 
-  // Convert images from binary (Buffer) to Base64
-  const formattedProducts = products.map(product => {
-    if (product.images && product.images.length > 0) {
-      product.images = product.images.map(image => ({
-        data: `data:${image.contentType};base64,${image.data.toString("base64")}`, // ✅ Proper Base64 conversion
+    // Convert images from binary (Buffer) to Base64
+    const formattedProducts = products.map(product => ({
+      ...product._doc,
+      images: product.images.map(image => ({
+        data: `data:${image.contentType};base64,${image.data.toString("base64")}`,
         contentType: image.contentType
-      }));
-    }
-    return product;
-  });
+      }))
+    }));
 
-  res.json(formattedProducts);
+    res.json(formattedProducts);
+  } catch (error) {
+    console.error("❌ Error fetching category products:", error);
+    res.status(500).json({ message: "Failed to fetch category products" });
+  }
 }));
+
 
 // ✅ Update a product (supporting multiple image updates)
 router.put("/:id", upload.array("images", 5), asyncHandler(async (req, res) => {
