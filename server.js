@@ -7,6 +7,7 @@ dotenv.config(); // ✅ Load environment variables
 
 const productRoutes = require("./routes/products"); // Import product routes
 const reviewRoutes = require("./routes/reviews"); // Import review routes
+const authRoutes = require("./routes/auth"); // Import authentication routes
 
 // ✅ Secure MongoDB Connection
 const mongoUri = `mongodb+srv://${process.env.MONGO_USER}:${process.env.MONGO_PASSWORD}@${process.env.MONGO_CLUSTER}/${process.env.MONGO_DBNAME}?retryWrites=true&w=majority`;
@@ -22,6 +23,7 @@ app.use(express.json());
 
 app.use("/products", productRoutes); // ✅ productRoutes handling
 app.use("/reviews", reviewRoutes); // ✅ reviewRoutes handling
+app.use("/auth", authRoutes); // Authentication routes
 
 const PORT = process.env.PORT || 5001;
 app.listen(PORT, () => console.log(`🚀 Server running on port ${PORT}`));
