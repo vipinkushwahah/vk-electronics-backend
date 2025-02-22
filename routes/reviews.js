@@ -13,35 +13,29 @@ const upload = multer({ storage });
 // Add a new review with optional images
 router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => {
   try {
-    let compressedImages = [];
-
-    if (req.files) {
-      for (let file of req.files) {
-        let compressedImage = file.buffer;
-
-        if (file.mimetype !== "image/svg+xml") {
-          compressedImage = await sharp(file.buffer)
-            .resize({ width: 500 }) // Resize width to 500px (maintains aspect ratio)
-            .jpeg({ quality: 70 }) // Convert to JPEG (reduce size while keeping quality)
-            .toBuffer();
-        }
-
-        compressedImages.push({
-          data: compressedImage.toString("base64"), // Convert Buffer to base64 for frontend compatibility
-          contentType: file.mimetype,
-        });
-      }
-    }
-
-    // Create a new review with images
     const newReview = new Review({
       productId: req.body.productId,
       userId: req.body.userId,
       username: req.body.username, // Ensure username is sent from the frontend
       rating: req.body.rating,
       comment: req.body.comment,
-      images: compressedImages,
     });
+
+    // Process images if provided
+    if (req.files && req.files.length > 0) {
+      const compressedImages = await Promise.all(req.files.map(async (file) => {
+        const compressedImage = await sharp(file.buffer)
+          .resize({ width: 500 }) // Resize width to 500px
+          .jpeg({ quality: 70 }) // Convert to JPEG
+          .toBuffer();
+
+        return {
+          data: compressedImage,
+          contentType: file.mimetype,
+        };
+      }));
+      newReview.images = compressedImages; // Save multiple images
+    }
 
     await newReview.save();
     res.json({ message: "✅ Review added successfully!", review: newReview });
@@ -51,11 +45,21 @@ router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => {
   }
 }));
 
-// Get all reviews
+// Get reviews by product ID
 router.get("/", asyncHandler(async (req, res) => {
   try {
     const reviews = await Review.find();
-    res.json(reviews);
+    
+    // Convert image buffer to Base64 for frontend display
+    const formattedReviews = reviews.map(review => ({
+      ...review._doc,
+      images: review.images.map(img => ({
+        data: `data:${img.contentType};base64,${img.data.toString("base64")}`,
+        contentType: img.contentType,
+      }))
+    }));
+
+    res.json(formattedReviews);
   } catch (error) {
     console.error("❌ Error fetching reviews:", error);
     res.status(500).json({ message: "Failed to fetch reviews" });
