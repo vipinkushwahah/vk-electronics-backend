@@ -13,30 +13,35 @@ const upload = multer({ storage });
 // Add a new review with optional images
 router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => {
   try {
-    const newReview = new Review({
-      userId: req.body.userId,
-      username: req.body.username, // Ensure username is sent from the frontend
-      email: req.body.email, // Capture email from the frontend
-      rating: req.body.rating,
-      comment: req.body.comment,
-    });
+    let compressedImages = [];
 
-    // Process images if provided
     if (req.files) {
-      const compressedImages = [];
       for (let file of req.files) {
-        const compressedImage = await sharp(file.buffer)
-          .resize({ width: 500 }) // Resize width to 500px
-          .jpeg({ quality: 70 }) // Convert to JPEG
-          .toBuffer();
+        let compressedImage = file.buffer;
+
+        if (file.mimetype !== "image/svg+xml") {
+          compressedImage = await sharp(file.buffer)
+            .resize({ width: 500 }) // Resize width to 500px (maintains aspect ratio)
+            .jpeg({ quality: 70 }) // Convert to JPEG (reduce size while keeping quality)
+            .toBuffer();
+        }
 
         compressedImages.push({
           data: compressedImage.toString("base64"), // Convert Buffer to base64 for frontend compatibility
           contentType: file.mimetype,
         });
       }
-      newReview.images = compressedImages; // Save multiple images
     }
+
+    // Create a new review with images
+    const newReview = new Review({
+      productId: req.body.productId,
+      userId: req.body.userId,
+      username: req.body.username, // Ensure username is sent from the frontend
+      rating: req.body.rating,
+      comment: req.body.comment,
+      images: compressedImages,
+    });
 
     await newReview.save();
     res.json({ message: "✅ Review added successfully!", review: newReview });
@@ -46,7 +51,7 @@ router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => {
   }
 }));
 
-// Get reviews by product ID
+// Get all reviews
 router.get("/", asyncHandler(async (req, res) => {
   try {
     const reviews = await Review.find();
