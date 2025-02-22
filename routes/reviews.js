@@ -13,9 +13,17 @@ const upload = multer({ storage });
 // Add a new review with optional images
 router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => {
   try {
-    let compressedImages = [];
+    const newReview = new Review({
+      userId: req.body.userId,
+      username: req.body.username, // Ensure username is sent from the frontend
+      email: req.body.email, // Capture email from the frontend
+      rating: req.body.rating,
+      comment: req.body.comment,
+    });
 
+    // Process images if provided
     if (req.files) {
+      const compressedImages = [];
       for (let file of req.files) {
         let compressedImage = file.buffer;
 
@@ -31,17 +39,8 @@ router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => {
           contentType: file.mimetype,
         });
       }
+      newReview.images = compressedImages; // Save multiple images
     }
-
-    // Create a new review with images
-    const newReview = new Review({
-      userId: req.body.userId,
-      username: req.body.username,
-      email: req.body.email,
-      rating: req.body.rating,
-      comment: req.body.comment,
-      images: compressedImages, // Store images as base64
-    });
 
     await newReview.save();
     res.json({ message: "✅ Review added successfully!", review: newReview });
@@ -51,7 +50,7 @@ router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => {
   }
 }));
 
-// Get all reviews
+// Get reviews by product ID
 router.get("/", asyncHandler(async (req, res) => {
   try {
     const reviews = await Review.find();
