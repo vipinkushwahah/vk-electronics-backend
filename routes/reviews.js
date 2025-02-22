@@ -25,14 +25,10 @@ router.post("/", upload.array("images", 5), asyncHandler(async (req, res) => {
     if (req.files) {
       const compressedImages = [];
       for (let file of req.files) {
-        let compressedImage = file.buffer;
-
-        if (file.mimetype !== "image/svg+xml") {
-          compressedImage = await sharp(file.buffer)
-            .resize({ width: 500 }) // Resize width to 500px (maintains aspect ratio)
-            .jpeg({ quality: 70 }) // Convert to JPEG (reduce size while keeping quality)
-            .toBuffer();
-        }
+        const compressedImage = await sharp(file.buffer)
+          .resize({ width: 500 }) // Resize width to 500px
+          .jpeg({ quality: 70 }) // Convert to JPEG
+          .toBuffer();
 
         compressedImages.push({
           data: compressedImage.toString("base64"), // Convert Buffer to base64 for frontend compatibility
