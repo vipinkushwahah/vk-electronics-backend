@@ -20,6 +20,7 @@ const productSchema = new mongoose.Schema({
   },
   textColor: { type: String, default: "#000000" },
   bgColor: { type: String, default: "#ffffff" },
+  createdBy: { type: String, required: true }, // ✅ Added this
 });
 
 module.exports = mongoose.model("Product", productSchema);
